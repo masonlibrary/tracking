@@ -1,39 +1,27 @@
 'use strict';
 
 // Declare app level module which depends on views, and components
-angular.module('myApp', [
-	'ngRoute',
-	'myApp.view1',
-	'myApp.view2',
-	'myApp.version'
-]).
+angular.module('myApp', ['ngRoute']).
 	
 config(['$routeProvider', function ($routeProvider) {
-	$routeProvider.otherwise({redirectTo: '/view1'});
+	$routeProvider
+		.when('/view1', { templateUrl: 'view1/view1.html', controller: ViewController })
+		.when('/view2', { templateUrl: 'view2/view2.html', controller: ViewController })
+		.otherwise({redirectTo: '/view1'});
 }]).
 
 factory('List', function($q, $http) {
-	function push(msg) {
-		var deferred = $q.defer();
 
-		$http.post('//server.kscmasonlibrary.org:8080/', msg).
-			success(function(data, status) {
-				console.log(status, data);
-				deferred.resolve(data);
-			}).
-			error(function(data, status) {
-				console.log(status, data);
-				deferred.reject(data);
-			});
+	var factory = {};
+//	var rows = [{}];
 
-		return deferred.promise;
-	}
-	function get() {
+	factory.get = function() {
 		var deferred = $q.defer();
 
 		$http.get('//server.kscmasonlibrary.org:8080/', {cache:true}).
 			success(function(data, status) {
-				console.log(status, data);
+//				console.log(status, data);
+//				factory.rows = data;
 				deferred.resolve(data);
 			}).
 			error(function(data, status) {
@@ -42,30 +30,42 @@ factory('List', function($q, $http) {
 			});
 			
 		return deferred.promise;
-	}
-	return {
-		push: push,
-		get: get
 	};
-}).
 
-controller('ViewCtrl', function($scope, List) {
-	$scope.rows = [{}];
-	
+	factory.post = function(msg) {
+		var deferred = $q.defer();
+
+		$http.post('//server.kscmasonlibrary.org:8080/', msg).
+			success(function(data, status) {
+				console.log(status, data);
+				factory.rows = data;
+				deferred.resolve(data);
+			}).
+			error(function(data, status) {
+				console.log(status, data);
+				deferred.reject(data);
+			});
+
+		return deferred.promise;
+	};
+
+	return factory;
+
+});
+
+function ViewController($scope, List) {
 	List.get().then(function(data) {
-		$scope.rows = data;
+		List.rows = data;
+		$scope.rows = List.rows;
 	});
-
+	
 	$scope.doPost = function() {
 		var obj = {
-			assetid:$scope.assetid,
-			location:$scope.location
+			assetid:   $scope.assetid,
+			location:  $scope.location
 		};
-		List.push(obj);
-		console.log($scope.rows);
-		$scope.rows.push(obj);
-		console.log($scope.rows);
+		List.post(obj).then(function(data) { $scope.rows = data; });
 		$scope.assetid = "";
 		$scope.location = "";
 	};
-});
+}
